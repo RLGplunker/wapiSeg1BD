@@ -1,0 +1,108 @@
+﻿ENCRIPTACIÓN
+> Definiciones:
+	- Al mensaje original sin encriptar le llamados texto plano 
+	- A resultado de encritar el texto plano le llamamos texto cifrado 
+	- LLave secreta: La utilizan los algoritmos de encriptación para conseguir el texto cifrado 
+	- Esa llave es imprencible protegerla, a través de variable de ambiente o a través de Azure Key Vault por ejemplo 
+
+> Encriptación en asp net .core
+	> Está servicio de protección de datos:
+		IDataProteccionProvider => Se encarga de crear el IDataProtector 
+		y/o IDataProtector => Se encargar de encriptar/desencriptar los mensajes 
+
+	> Entonces en startup.cs -> ConfigureServices 
+		> services.AddDataProtection();
+			> Con esto se tiene la configuración mínima 
+
+		> Se puede inyectar a cualquier constructor IDataProteccionProvider 
+		  (Ver en WelcomeController.cs)
+
+			public class WelcomeController : MiBaseController
+			{
+				private IDataProtector _dataProtector;
+				public WelcomeController(IDataProtectionProvider dataProteccionProvider )
+				{
+					_dataProtector = dataProteccionProvider.CreateProtector("valor_unico_y_quizas_secreto");
+				}
+
+				Nota: a la string: "valor_unico_y_quizas_secreto" se le llama string de propósito 
+				que se puede considerar como PARTE DE LA LLAVE del algoritmo de encriptación que se va a utilizar 
+
+				- Es obsolutamente necesario tener la string de propósito.
+				- Es conveniente que el string-propósito sea único a nivel de aplicación 
+	
+		> Hago prueba de encriptar/desencriptar en WelcomeController.cs 
+			TestCifrar
+				https://localhost:44328/Cifrar/Hola
+				"Texto cifrado: CfDJ8FyME-FyY-pEuyfO3co1Okoar-1FcumVkNAn8IBZdnm1Pz_4zpF-GYdakKxb_vMOpMFl7SpZEhmmPdYV3W92rk8Zlrk9Fddn5xalw9TMixg2rPxb8mS5B9konFBmW9e9hg"
+
+			TestDescifrar
+				https://localhost:44328/DesCifrar/CfDJ8FyME-FyY-pEuyfO3co1Okoar-1FcumVkNAn8IBZdnm1Pz_4zpF-GYdakKxb_vMOpMFl7SpZEhmmPdYV3W92rk8Zlrk9Fddn5xalw9TMixg2rPxb8mS5B9konFBmW9e9hg
+				"Texto plano: Hola"
+
+	> Se puede hacer que el texto encriptado tenga una vigencia temporal.
+	  Lo que pasa es que pasado ese tiempo de vigencia no se puede desencritar el texto cifrado
+	  Útil por ejemplo para tokens
+	  
+        [HttpGet]
+        [Route("/CifrarTimeLimited/{textoPlano}/{numSegundos}")]
+        public JsonResult TestCifrarTimeLimited(string textoPlano, int numSegundos)
+        {
+            var protectorLimitadoPorTiempo = _dataProtector.ToTimeLimitedDataProtector();
+
+            var textoCifrado = protectorLimitadoPorTiempo.Protect(textoPlano,TimeSpan.FromSeconds(numSegundos));
+            return new JsonResult($"Texto  Cifrado con límite desfrado en {numSegundos} segundos: {textoCifrado}");
+        }
+
+        [HttpGet]
+        [Route("/DesCifrarTimeLimited/{textoCifrado}")]
+        public JsonResult TestDeCifrarTimeLimited(string textoCifrado)
+        {
+            var protectorLimitadoPorTiempo = _dataProtector.ToTimeLimitedDataProtector();
+
+            var textoPlano = protectorLimitadoPorTiempo.Unprotect(textoCifrado);
+            return new JsonResult($"Texto plano con limite tiempo desfrado es : {textoPlano}");
+        }
+			https://localhost:44328/CifrarTimeLimited/Hola/5
+			https://localhost:44328/DesCifrarTimeLimited/xxxxxx
+	
+	
+> Llaves de protección de datos 
+	> El constructor lo hemos creado así:
+
+		public class WelcomeController : MiBaseController
+		{
+			private IDataProtector _dataProtector;
+			public WelcomeController(IDataProtectionProvider dataProteccionProvider )
+			{
+				_dataProtector = dataProteccionProvider.CreateProtector("valor_unico_y_quizas_secreto");
+			}
+
+	> Saca esta diapositiva:
+	Llaves de protección de Datos
+		Los algoritmos de encriptación más comunes utilizan una llave. 
+		Y los procesos dados por ASP.NET Core no son la excepción. 
+		Hasta ahora nos hemos mantenido solamente hablando del string de propósito
+		, sin embargo, es importante notar que el framework va a manejar las llaves por ti,
+		a menos que decidas sobrescribir ciertas configuraciones por defecto. D
+		esde el tiempo de vida de una llave, hasta donde guardar las llaves, 
+		son de las configuraciones que podríamos personalizar si lo deseamos.
+
+		Por ejemplo, si tu Web API lo colocas en un App Service de Azure, 
+		entonces las llaves se van a colocar, por defecto, 
+		en la carpeta %HOME%\ASP.NET\DataProtection-Keys. 
+		Una consideración especial para tomar en cuenta con esto, es que los distintos slots de tu app 
+		van a tener llaves diferentes. 
+		Esto puede traer ciertas situaciones inesperadas, 
+		como que lo que encriptes en un slot no puedas desencriptarlo en otro slot. 
+		Esto puede ser problemático en determinadas ocasiones, 
+		sobre todo si acostumbras a manejar tus slots de manera casi transparente para el usuario. 
+		
+		La solución para esta problemática es colocar las llaves en un lugar externo, como en Azure Blob Storage.
+
+		Del mismo modo, si tienes la aplicación instalada en IIS, las llaves serán persistidas en el registro HKLM.
+
+		Es decir, por defecto, el framework verifica en donde se encuentra la aplicación
+		y trata de buscar la mejor manera de guardar las llaves. 
+		Es importante que entiendas lo que el framework va a hacer con las llaves, 
+		en caso de que necesites sobrescribir el comportamiento por defecto para que se ajuste a tus necesidades.

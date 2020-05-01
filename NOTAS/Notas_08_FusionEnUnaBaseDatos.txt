@@ -1,0 +1,6 @@
+﻿> He quitado el contexto de BDPRoduct
+> He aprovechado el OnCreating de BDProduct para colocarlo en el contexto unico
+> He ejecutado add-migration ProductsSegContext
+> Ejecuto update-database update-database -verbose
+> Y ha ido todo ok 
+> Aprovecho los datos de la bd: UdemyIdentity T(AspNetUser y AspNetRoles) y los copio a la nueva base de datos 

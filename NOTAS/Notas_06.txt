@@ -1,0 +1,25 @@
+﻿HTTPS y HSTS 
+
+Definiciones
+TLS: 
+ Transport layer security
+ -Protocolo estándar para conexión segura entre cliente/servidor web
+   que hace que la información navegue encriptada 
+ - Se espera que cualquier servidor web use TLS
+
+ - Cuando nos conectamos a una servidor web con TLS lo hacemos con protocolo https
+
+> En aspnet.core
+    >  En el middleware se configura UseHttpsRedirection, que lo que hace es 
+       redirección peticiones http a https 
+
+    > UseHsts sirve para enviar a los clientes la cabecera Strict-Transport-Security (HSTS)
+      para indicar a los navegadores que el servidor sólo trata https (pero esto no obliga. ENTONCES?)
+
+    > web api no debe depender de RequireHttps
+      > Incluso la doc. existente exhorta a no utilizar este atributo en weapis xq  no protege
+        de que un usuario mande una petición http. ENTONCES?
+
+        > Soluc: Sólo permitir conexiones https con configuración a nivel de servidor para que 
+          rechace todas las conexiones http 
+

@@ -1,0 +1,90 @@
+﻿CORS
+Def:
+-Política del mismo origen:
+	- Si estoy en url de app, no puedo hacer petición a otra url / cambie protocolo (http/https), host/port (alguno de ellos )
+	- Esta es política  entre navegadores. No pasa si se hace petición de un móvil o desde un servidor web en general 
+	   (esto último no me cuadra!!!)
+
+- Se puede habilitar el intercambio de recursos de origen cruzado (CORS) 
+  para permitir peticiones desde otros orígenes hacia nuestro web api
+
+  - Con .net core es muy directo. Hay que ir a startup.cs para registrar el servicio de cors por middleware 
+	services.AddCors();
+
+	- A partir de aquí se puede configurar cors. 
+		Hay 2 opciones:
+			- Hacerlo por middleware
+			- Hacerlo x controlador de excepciones 
+
+
+- Configurar CORS por middleware
+	1) En ConfigureService
+		 services.AddCors();
+		- colocarlo antes de fijar cualquier endpoint 
+		Nota: de prueba, desde www.apirequest.io 
+		     hacer petición a mi web api 
+			 
+	2) En configure (la parte middleware)
+		  app.UseCors(builder => builder
+             .WithOrigins("https://www.apirequest.io"));
+
+
+		-> También se pueden configurar qué opciones 	     
+
+			  app.UseCors(builder => builder
+             .WithOrigins("https://www.apirequest.io")
+             .WithMethods("GET","POST")
+             .AllowAnyHeader()); //<-- necesario para añadir cabeceras tipo: content-type: application/json 
+
+	     -> También se pueden configurar qué opciones 	     
+
+			  app.UseCors(builder => builder
+             .WithOrigins("*")
+             .WithMethods("*")
+             .WithHeader("*"));
+
+- Configurar Cors atributos en controlador de excepciones
+	-> Se hace utilizando políticas de seguridad específicas para cors
+	-> Las políticas de seguridad nos van a permitir centralizar las configuraciones de cors en un sólo lugar 
+	   de modo que podamos aplicar estas políticas de seguridad a nuestros endpoint 
+	-> Con las políticas de seguridad se pueden aplicar las misma restricciones que se aplican
+	   cuando se cors se configura x middleware 
+
+	-> Para crear una política de seguridad
+		-> En startup.cs ConfigureService 
+
+            // CORS POR POLÍTICAS DE SEGURIDAD
+            services.AddCors(options => 
+                options.AddPolicy("Permitir_apiRequestIo"
+                , builder => builder
+                     .WithOrigins("https://www.apirequest.io")
+                     .WithMethods("GET", "POST")
+                     .AllowAnyHeader()));			
+
+	-> En startup.cs Configure
+
+			// CORS POR POLÍTICAS DE SEGURIDAD
+            app.UseCors();
+
+	-> Ir al controller-method que sea (en mi caso WellcomeController.cs) -> 
+		
+		La política se puede aplicar a nivel de controller total o a nivel de método
+
+		-> A nivel de controller
+			[EnableCors("Permitir_apiRequestIo")] // param: nombre de la política en Startup.cs - ConfigureServices
+			public class WelcomeController : MiBaseController
+     
+			He probado y funciona
+
+		-> A nivel de método 
+
+			[EnableCors("Permitir_apiRequestIo")]
+			[Route("/TestCors")]
+			[HttpPost]        
+			public ActionResult<TestCors> Get(TestCors testCors)
+			{
+				var testCorsOut = new TestCors() { Nombre = $"{testCors.Nombre}_out" ,Edad=100};
+				return Ok(testCorsOut);
+			}
+
+			He probado y funciona

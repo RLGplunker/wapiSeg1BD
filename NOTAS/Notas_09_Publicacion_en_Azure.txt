@@ -1,0 +1,14 @@
+﻿https://wapiseg1bd20200501061625.azurewebsites.net
+
+>  Usuario de bd sql server => usr: rosana pwd: mamapapa_AZURE
+
+> he probado la url y no me funciona /Products/Listar => Las tablas no estaban creadas 
+> En VS -> Explorador de servidores-> Azure he cogido el nombre del servidor wapiseg1bd20200501061625dbserver
+	 y desde mi sqlserver Management Studio me he conectado a la base de datos 
+
+> Efectamente las tablas no estaban creadas y he hecho en VS:
+> en PM> script-migration -idempotent (-idempotent evita crear script con errores xq ya están tablas ....)
+  me ha salido todo el script de creación de tablas... y lo he ejecutado en el servidor Azure 
+
+> Ahora inserto los usuarios y roles que ya tenía en mi otra base de datos 
+

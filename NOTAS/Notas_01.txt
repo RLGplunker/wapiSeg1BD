@@ -1,0 +1,88 @@
+﻿> Instalar paquete: Microsoft.AspNetCore.Identity.EntityFrameworkCore
+  Para tener acceso a Identity.EntityFrameworkCore
+
+> Se utiliza codeFirst => 
+    > Add-Migration sistema-login 
+        > Ha creado en Migrations la clase sistemalogin. Pero todavía no ha creado las tablas en la bd 
+
+    > update-database  (esto crea las tablas ) 
+
+> Hecho lo anterior ya se puede trabajar con el esquema de seguridad http Bearer
+    > Con Json Web Tokens 
+
+> Json Web Tokens (JWT) 
+  > Datos confiables(emitidos x entidad confiable) en forma de Claims con información del usuario
+  > Los token no deben tener información sensible del usuario. Por tanto no debe estar en token la pwd 
+
+
+> next: crear controller que permite registrar usuarios 
+> Instalar: Microsoft.AspNetCore.Authentication.JwtBearer
+> En appsettings.json
+    Pongo 
+      "JWT": {
+        "key": "holaquetalESTASporAQUIEN343JAS0DFADJFASÑDFJASDFU8707ASD0F8ASDF"
+            }
+    Aunque debería estar en windows-variables de entorno dado que es información muy sensible 
+
+
+> En CuentasController.cs, en el siguiente método se crea el token 
+
+   private UserToken BuildToken(UserInfo userInfo, IList<string> roles)
+        {
+            var claims = new List<Claim>
+            {
+        new Claim(JwtRegisteredClaimNames.UniqueName, userInfo.Email),
+        new Claim("miValor", "Lo que yo quiera"),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
+
+        Nota: 
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()
+            Esto es útil para por ejemplo lo siguiente:
+                - Si detecto que un usuario está haciendo algo mal. Invalido su token y
+                  esto hace que no pueda utilizar la aplicación 
+
+> Prueba-ok
+https://localhost:44328/api/Cuenta/Crear
+{
+	"Email": "roslopguz2016@gmail.com",
+	"Password": "is3v0l2_A"
+}
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InJvc2xvcGd1ejIwMTZAZ21haWwuY29tIiwibWlWYWxvciI6IkxvIHF1ZSB5byBxdWllcmEiLCJqdGkiOiI5Y2Y5MWEwNy01MThlLTQyOTgtYjA5MC02OWM2M2RiNWM4NzEiLCJleHAiOjE2MTkzNDQ1MzR9.rYYZUiCf8P5XBY7a7OGzjlP_v01DqWZpfpP9m-EC_-I",
+    "expiration": "2021-04-25T09:55:34.0064414Z"
+}
+
+> Next: añadir en en Startup.cs ConfigureServices
+    services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+
+> Next: Añadir un middleware de autenticación, antes de useEndpoints 
+    app.UseAuthentication()
+
+> Next: Prueba de autenticación 
+    En WelcomeController añadir action method con autorizacion 
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [Route("/Conectar")]
+        [HttpGet]
+        public JsonResult GetInfo()
+        {
+            return new JsonResult("Has conectado ok con tu token");
+        }
+     Ejecutar en postman https://localhost:44328/Conectar
+        Da statusCode=401 - No autorizado
+
+     Volver a ejecutar en postman https://localhost:44328/Conectar PERO
+        ir a pestaña Authorización de postman 
+        Seleccionar en TYPE -> BearerToken 
+        Introducir el token 
+        Ejecutar de nuevo
+
+        RESPUESTA statusCode=200 ok
+
+       Esto que hace postman (pestaña Auth + type=Bearer Token)
+       es lo mismo que si no utilizamos esto y a cambio añadimos una Header
+       Que se llame: Authorizaton
+       y cuyo valor sea: Bearer{ESPACIO EN BLANCO}{token}
+
+       Ejemplo: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InJvc2xvcGd1ejIwMTZAZ21haWwuY29tIiwibWlWYWxvciI6IkxvIHF1ZSB5byBxdWllcmEiLCJqdGkiOiI5Y2Y5MWEwNy01MThlLTQyOTgtYjA5MC02OWM2M2RiNWM4NzEiLCJleHAiOjE2MTkzNDQ1MzR9.rYYZUiCf8P5XBY7a7OGzjlP_v01DqWZpfpP9m-EC_-I

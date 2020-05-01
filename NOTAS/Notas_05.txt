@@ -1,0 +1,71 @@
+﻿HASHES
+> Es un algoritmo que encripta el mensaje y es virtualmente imposible de descifrar revirtiendo el proceso. 
+> Al resultado de una función hash se le llama hash
+> Esto se usa cuando te logas a una web. Lo correcto es que la app no guarde el texto plano de 
+  de la pwd (xa que no pueda utilizarla)
+> La forma de verificar que el login es correcto:
+    Funcion_hash(textoPlano) -> hash (guardado en bd)
+    if Funcion_hash(textoPlano) == hash_guardo_en_bd => OK 
+ 
+> Cosas a tener en cuenta:
+    > salt
+        > es un valor aleatorio que se anexa al texto plano al cual le queremos pasar la función hash
+          esto protege de ataques de diccionario ???
+
+> Implementación
+    > crear un servicio llamado HashService 
+      que utiliza el algoritmo Pbkdf2
+
+
+    > Nota: 
+      Si la funcion del servicio HashSErvice utiliza un salt aleatorio
+      para hacer el hash del texto plano ocurrirá que cada que vez que se ejecute 
+      la función del servicio dará un hash diferente para un mismo texto plano.
+      Esto no nos sirve para guardar la pwd con hash en la bd 
+      
+
+        > Pruebas en WelcomeController.cs
+
+            [Route("/Hash/{textoPlano}")]
+            [HttpGet]
+            public ActionResult GetHash(string textoPlano)
+            {
+                var hashResult = _hashService.Hash(textoPlano);
+                var hashResult2 = _hashService.Hash(textoPlano);
+                return Ok(new {TextoPlano=textoPlano, Hash=hashResult.Hash, Salt=hashResult.Salt, Hash2=hashResult2.Hash, Salt2=hashResult2.Salt });
+            }
+
+            https://localhost:44328/Hash/hola
+
+            {"textoPlano":"hola",
+            "hash":"O897bTFhl4OTqhIfFFfmT6G3odPDbgt0vYb7LAdCYbU=",
+            "salt":"gsAd18wkWO7dQQ5q358KHw==",
+    
+            "hash2":"orM9Q0LXSbX6cFjlMli4eadYKy5Nufc6Tx3x7tg+nUQ=",
+            "salt2":"SqIqdkrQmn5ro9YLdPNdTg=="}
+
+      
+      
+      > Voy a probar a utilizar siempre la misma salt para obtener el mismo hash 
+
+      
+            [Route("/HashForPassword/{textoPlano}")]
+            [HttpGet]
+            public ActionResult GetHashForPassword(string textoPlano)
+            {
+                var hashResult = _hashService.Hash(textoPlano);
+                var salt = hashResult.Salt;
+
+                var hashResult2 = _hashService.Hash(textoPlano,salt);
+                return Ok(new { TextoPlano = textoPlano, Hash = hashResult.Hash, Salt = hashResult.Salt, Hash2 = hashResult2.Hash, Salt2 = hashResult2.Salt });
+            }
+
+            https://localhost:44328/HashForPassword/hola
+            
+            {"textoPlano":"hola",
+            "hash":"BGPUMS9tMp9eppAMwhHs5H1v6IBrTkNVCucnKWOcTiU=",  <-- Efectivamente sale el mismo hast para validar la password 
+            "salt":"FiTPIEzlPfUC2yyfQe++fg==",
+            
+            "hash2":"BGPUMS9tMp9eppAMwhHs5H1v6IBrTkNVCucnKWOcTiU=", <-- Efectivamente sale el mismo hast para validar la password 
+            "salt2":"FiTPIEzlPfUC2yyfQe++fg=="}
+

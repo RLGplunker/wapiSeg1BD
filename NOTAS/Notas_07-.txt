@@ -1,0 +1,8 @@
+﻿HATEOAS - MÓDULO-8
+> Es una restricción de REST que nos sirve para ayudar a los clientes de la webapi a 
+  navegar por los recursos y saber qué son capaces de hacer 
+
+> La forma más sencilla es crear una clase base que tenga:
+    > Link
+    > Descripcion 
+    > Método 

@@ -1,0 +1,121 @@
+﻿ROLES
+> Necesario cuando aun habiendo sido autenticado un usuario, este puede acceder o no a un endpoint, según tenga un rol determinado 
+> Tan sólo hay que poner esto:
+	[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,Roles ="admin")]
+
+	y dar de alta en tablas:
+		AspNetRoles
+		AspNetUserRoles
+
+	PERO, me da error, porque no sé como dar los valores a los campos 
+	=> como dice el tutorial, lo creamos por código  En ApplicationDbContext
+
+	> Además añado nueva migración xq he añadido en ApplicationDbContext.cs
+
+	    protected override void OnModelCreating(ModelBuilder builder)
+        {
+
+		para ello: 
+		PM> add-migration addRoleAdmin
+
+		dice eliminar migración ???
+		PM> script-migration sistema-login (la migración anterior) y me sale:
+
+				IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'ConcurrencyStamp', N'Name', N'NormalizedName') AND [object_id] = OBJECT_ID(N'[AspNetRoles]'))
+					SET IDENTITY_INSERT [AspNetRoles] ON;
+				INSERT INTO [AspNetRoles] ([Id], [ConcurrencyStamp], [Name], [NormalizedName])
+				VALUES (N'68ae69b7-76d7-49fc-b3eb-3c1e3940ff91', N'419d7dbf-1d42-45c5-b13c-ab76a6a83f7a', N'admin', N'admin');
+				IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'ConcurrencyStamp', N'Name', N'NormalizedName') AND [object_id] = OBJECT_ID(N'[AspNetRoles]'))
+					SET IDENTITY_INSERT [AspNetRoles] OFF;
+
+				GO
+				h
+				INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+				VALUES (N'20200425113525_addRoleAdmin', N'3.1.3');
+
+				GO
+
+		Sin embargo pongo
+		PM> script-migration addRoleadmin (que es donde he añadido el rol y no me sale nada ) NO ENTIENDO
+
+		SOLUCIONADO:
+			En OnModelCreating es donde he añadido insertar el rol admin
+			OnModelCreating se corresponde con la 1ª migración sistema-login. Por eso 
+			script-migration addRoleAdmin no sale nada y sí sale con script-migration sistema-login 
+
+			Y después tendría 
+			PM> remote-migration (quita la última) porque en la tabla AspNetRoles 
+			tiene el campo ConcurrencyStamp, que va cambiando. Y al cambiar, hace que 
+			AspNetNetRoles aparezca en todas las migraciones. Por eso es el tema de quitarla 
+
+			Le he puesto 
+			PM> remove-migration 
+			   y me ha dado error de que la migración ya había sido aplicada a la bd ......
+
+			He tenido que poner 
+
+			PM> remove-migration -force 
+
+> Ahora hay que crear el controller que añade un rol a un usuario 
+	> En UsuariosController
+		> se crea AsignarRolUsuario /RemoverRolUsuario
+
+> Además al JWT hay que decirle que ese usuario tiene ese rol también 
+	> Hay que ir al controller CuentasController.cs
+	> y en el método BuildToken hay que añadirle un parámetro nuevo IList<string> roles
+	  con la lista de roles a los que pertenece un usuario 
+
+	> Y desde el método de Login pasarle la lista de roles 
+	> En el mismo controller, en Crear hay que darle una lista vacía de roles .
+				[HttpPost("Crear")]
+				public async Task<ActionResult<UserToken>> CreateUser([FromBody] UserInfo model)
+				{
+					var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+					var result = await _userManager.CreateAsync(user, model.Password);
+					if (result.Succeeded)
+					{
+						return BuildToken(model, new List<string>());
+					}
+					else
+					{
+						return BadRequest("Username or password invalid");
+					}
+
+				}	  
+
+> Ahora probar que puedo acceder a WelcomeController.cs (https://localhost:44328/Conectar )
+	que sólo acceden usuarios autenticados y con rol admin 
+
+	> Como he echado para atrás la migración se me ha borrado el rol admin en la bd
+	  Como he guardo la sql que inserta la vuelvo a ejecutar 
+
+	> Con UsuariosController voy a asignarle a usuario 046e1397-a8b1-463a-aeb4-d13fbf57b66d
+	  el rol admin 
+
+		https://localhost:44328/api/Usuarios/AsignarRolUsuario
+		  desde body
+		  {
+			"UserId": "046e1397-a8b1-463a-aeb4-d13fbf57b66d",
+			"RoleName": "admin"
+		  }
+
+	> Hago login para recibir el nuevo token de ese rol
+		https://localhost:44328/api/Cuentas/Login
+				desde body
+				{
+					"Email": "roslopguz2016@gmail.com",
+					"Password": "is3v0l2_A
+				}
+
+				El nuevo token: 
+					{
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6InJvc2xvcGd1ejIwMTZAZ21haWwuY29tIiwibWlWYWxvciI6IkxvIHF1ZSB5byBxdWllcmEiLCJqdGkiOiI5ZjQxNWIxMy0wMjRhLTRkMzktYjQ2NS0wMDUxODU5ZGQ1ZDUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJhZG1pbiIsImV4cCI6MTYxOTM1NTE4Nn0.RYrTECuo8kcWfxgknvvF9CRHbMxN2xlzqcryT4PUExw",
+						"expiration": "2021-04-25T12:53:06.1681876Z"
+					}
+
+	> Y luego llamo a https://localhost:44328/Conectar 
+	   con el token que me han devuelto en el login 
+
+		=> RESULTADO === OK !!!!!!
+
+
