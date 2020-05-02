@@ -31,7 +31,7 @@ namespace wapiSeg1BD.Controllers
         [HttpGet]
         public JsonResult Index()
         {
-            return new JsonResult("Welcome");
+            return new JsonResult("Welcome. How are you?");
         }
 
         #region Sobre auten. JWT
