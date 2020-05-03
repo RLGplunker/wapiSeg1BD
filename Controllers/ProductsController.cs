@@ -33,6 +33,12 @@ namespace wapiSeg1BD.Controllers
             _mapper = mapper;
         }
 
+        [HttpGet("Test")]
+        public ActionResult<String> Test()
+        {            
+            return Ok("Test ok");
+        }
+
         [HttpGet("Listar")]
         public async Task<ActionResult<IEnumerable<ProductListDTO>>> GetListaProducts()
         {
